@@ -51,7 +51,7 @@ on:
         type: boolean
         default: true
       use_ccache:
-        description: "Use CCache to cache the compilation result. This helps speed up later compile session, but requires a supported build script"
+        description: "Use CCache/Bazel cache to cache the compilation result. This helps speed up later compile session, but requires a supported build script"
         required: false
         type: boolean
         default: true
@@ -281,7 +281,7 @@ jobs:
           echo "CONFIG set to: $CONFIG"
 
       - name: Generate Kernel Source Key
-        if: ${{ inputs.use_ccache && !inputs.use_bazel }}
+        if: ${{ inputs.use_ccache }}
         run: echo "${{ github.event.inputs.custom_kernel_source }}" > kernel_url.txt
       - name: Cache CCache
         if: ${{ inputs.use_ccache && !inputs.use_bazel }}
