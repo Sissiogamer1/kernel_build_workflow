@@ -13,14 +13,13 @@ on:
         required: true
         type: choice
         options:
+          - None
           - Official
           - Next
           - KowSU
           - ReSukiSU
-          - MamboSU
-          - MKSU
           - SukiSU
-          - WKSU
+          - xxKSU
         default: KowSU
       kernelsu_branch:
         description: "KSU Branch"
@@ -40,25 +39,10 @@ on:
         required: true
         type: boolean
         default: true
-      use_superbuilders_susfs:
-        description: "Use SuperBuilders' susfs4ksu patch"
-        required: true
-        type: boolean
-        default: false
-      use_enhanced_susfs:
-        description: "Apply enhanced susfs4ksu patches"
-        required: true
-        type: boolean
-        default: false
       
       use_zram:
         description: 'Add ZRAM'
         required: true
-        type: boolean
-        default: false
-      use_kpm:
-        description: 'Enable the KPM feature?'
-        required: false
         type: boolean
         default: false
       BBG:
@@ -66,11 +50,6 @@ on:
         required: true
         type: boolean
         default: true
-      use_zeromount:
-        description: "Enable ZeroMount VFS driver"
-        required: true
-        type: boolean
-        default: false
       use_ccache:
         description: "Use CCache to cache the compilation result. This helps speed up later compile session, but requires a supported build script"
         required: false
@@ -87,7 +66,7 @@ on:
         type: boolean
         default: true
       custom_kernel_source:
-        description: "Compile kernel from another source instead of rodin source. Use rodin if you want to use rodin src"
+        description: "Git source of the kernel to compile. Can append git command line options to here"
         required: false
         type: string
         default: 'https://github.com/tmnasd/smol-rodin-kernel.git --depth 1'
@@ -290,40 +269,6 @@ jobs:
           # Sukisu的补丁仓库
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
 
-          # SuperBuilders patches
-          git clone https://github.com/Enginex0/Super-Builders.git
-
-          # Determine working SuperBuilders folder
-          variant_input="${{ inputs.kernelsu_variant }}"
-
-
-          case "$variant_input" in
-              "Next")     
-                echo "SUPER_DIR=Super-Builders/android15-6.6/KernelSU-Next/patches" >> $GITHUB_ENV 
-                echo "KSU_ENHANCED_PATCH=70_ksu_safety-kernelsu-next-${{ inputs.kernel_version }}.patch" >> $GITHUB_ENV
-                echo "KSU_DIR=KernelSU-Next" >> $GITHUB_ENV
-                ;;
-              "SukiSU")   
-                echo "SUPER_DIR=Super-Builders/android15-6.6/SukiSU-Ultra/patches" >> $GITHUB_ENV 
-                echo "KSU_ENHANCED_PATCH=70_ksu_safety-sukisu-${{ inputs.kernel_version }}.patch" >> $GITHUB_ENV
-                echo "KSU_DIR=KernelSU" >> $GITHUB_ENV
-                ;;
-              "WKSU")     
-                echo "SUPER_DIR=Super-Builders/android15-6.6/WildKSU/patches" >> $GITHUB_ENV 
-                echo "KSU_ENHANCED_PATCH=70_ksu_safety-wksu-${{ inputs.kernel_version }}.patch" >> $GITHUB_ENV
-                echo "KSU_DIR=Wild_KSU" >> $GITHUB_ENV
-                ;;
-              "ReSukiSU")
-                echo "SUPER_DIR=Super-Builders/android15-6.6/ReSukiSU/patches" >> $GITHUB_ENV 
-                echo "KSU_ENHANCED_PATCH=70_ksu_safety-resukisu-${{ inputs.kernel_version }}.patch" >> $GITHUB_ENV
-                echo "KSU_DIR=KernelSU" >> $GITHUB_ENV
-                ;;
-              *) 
-                echo "This variant of KSU is not supported by Super Builders!"
-                echo "SUPER_DIR=UNSUPPORTED" >> $GITHUB_ENV
-                ;;
-          esac
-
               
       - name: Set CONFIG variable
         run: |
@@ -388,6 +333,7 @@ jobs:
           echo "BAZEL_DISK_CACHE_DIR=$HOME/.cache/kleaf-bazel" >> "$GITHUB_ENV"
       
       - name: Determine the branch of KernelSU
+        if: ${{ inputs.kernelsu_variant != 'None' }}
         run: |
           branch_input="${{ inputs.kernelsu_branch }}"
           variant_input="${{ inputs.kernelsu_variant }}"
@@ -395,10 +341,11 @@ jobs:
           case "$branch_input" in
             "Stable")
               case "$variant_input" in
-                "Official" | "MKSU" | "ReSukiSU") echo "BRANCH=-s main" >> $GITHUB_ENV ;;
-                "Next" | "WKSU")                  echo "BRANCH=-s stable" >> $GITHUB_ENV ;;
-                "SukiSU")                         echo "BRANCH=-s main" >> $GITHUB_ENV ;;
-                "MamboSU" | "KowSU")              echo "BRANCH=-s master" >> $GITHUB_ENV ;;
+                "Official" | "ReSukiSU") echo "BRANCH=-s main" >> $GITHUB_ENV ;;
+                "Next")                  echo "BRANCH=-s dev-susfs" >> $GITHUB_ENV ;;
+                "SukiSU")                echo "BRANCH=-s builtin" >> $GITHUB_ENV ;;
+                "KowSU")                 echo "BRANCH=-s master" >> $GITHUB_ENV ;;
+                "xxKSU")                 echo "BRANCH=-s master" >> $GITHUB_ENV ;;
                 *) 
                   echo "Invalid choice '$variant_input'" >&2
                   exit 1
@@ -407,13 +354,11 @@ jobs:
               ;;
             "Dev")
               case "$variant_input" in
-                "MKSU") echo "BRANCH=-s dev" >> $GITHUB_ENV ;;
                 "SukiSU")                         echo "BRANCH=-s builtin" >> $GITHUB_ENV ;;
-                "WKSU")                           echo "BRANCH=-s canary" >> $GITHUB_ENV ;;
-                "MamboSU")                        echo "BRANCH=-s susfs-mambo-master" >> $GITHUB_ENV ;;
                 "Next")                           echo "BRANCH=-s dev-susfs" >> $GITHUB_ENV  ;;
                 "Official" | "ReSukiSU")          echo "BRANCH=-s main" >> $GITHUB_ENV ;;
                 "KowSU")                          echo "BRANCH=-s master" >> $GITHUB_ENV ;;
+                "xxKSU")                          echo "BRANCH=-s master" >> $GITHUB_ENV ;;
                 *) 
                   echo "Invalid choice '$variant_input'" >&2
                   exit 1
@@ -430,38 +375,34 @@ jobs:
           fi
 
       - name: Add KernelSU
+        if: ${{ inputs.kernelsu_variant != 'None' }}
         run: |
           echo "更改为配置目录: $CONFIG..."
           cd "$CONFIG"
           if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "Adding KernelSU Official..."
             curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash $BRANCH
+            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official~2.patch")
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "Adding KernelSU Next..."
             curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/refs/heads/dev-susfs/kernel/setup.sh" | bash $BRANCH
             cd KernelSU-Next
-            patch -p1 < <(curl -sL "https://raw.githubusercontent.com/midori01/gki_ksu_workflow/refs/heads/main/.github/patches/22_extra_features_for_ksu.patch")
-          elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
-            echo "Adding KernelSU MKSU..."
-            curl -LSs "https://raw.githubusercontent.com/5ec1cff/KernelSU/main/kernel/setup.sh" | bash $BRANCH
+            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/next~2.patch")
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "Adding KernelSU SukiSU..."
             curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
             
-          elif [ "${{ inputs.kernelsu_variant }}" == "WKSU" ]; then
-            echo "Adding Wild KSU..."
-            curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh" | bash $BRANCH
-          elif [ "${{ inputs.kernelsu_variant }}" == "MamboSU" ]; then
-            echo "Adding MamboSU..."
-            curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/master/kernel/setup.sh" | bash $BRANCH
           elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
             echo "Adding ReSukiSU..."
             curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash $BRANCH
-           elif [ "${{ inputs.kernelsu_variant }}" == "KowSU" ]; then
+          elif [ "${{ inputs.kernelsu_variant }}" == "KowSU" ]; then
             echo "Adding KowSU..."
             curl -LSs "https://raw.githubusercontent.com/KOWX712/KernelSU/refs/heads/master/kernel/setup.sh" | bash $BRANCH
             patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~2.patch")
-            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~1.patch")
+            
+          elif [ "${{ inputs.kernelsu_variant }}" == "xxKSU" ]; then
+            echo "Adding KowSU..."
+            curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh" | bash $BRANCH
             
           fi
 
@@ -503,7 +444,7 @@ jobs:
 
       
       - name: Enable susfs4ksu in ksu
-        if: ${{ inputs.use_susfs }}
+        if: ${{ inputs.use_susfs && inputs.kernelsu_variant != 'None' }}
         run: |
           echo "Change working directory to: $CONFIG..."
           cd "$CONFIG"
@@ -518,68 +459,37 @@ jobs:
             cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
             patch -p1 --forward --fuzz=3 < 10_enable_susfs_for_ksu.patch
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
-          #   echo "Applying SUSFS patches for KernelSU-Next..."
-             cd ./KernelSU-Next
-          #   patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/next.patch")
-          #   cp ${{github.workspace}}/kernel_patches/wild/ksun-0daf55582-susfs-v2.1.0-e259e7d6.patch ./
-          #   patch -p1 < ksun-0daf55582-susfs-v2.1.0-e259e7d6.patch
-          #   curl -LSs https://github.com/zzh20188/GKI_KernelSU_SUSFS/raw/refs/heads/dev/0001-kernel-patch-susfs-v1.5.7-to-KernelSU-Next-v1.0.7.patch -o susfs.patch 
-          #   patch -p1 --forward < susfs.patch
-
-          # #   cp ../../kernel_patches/next/kernel-patch-susfs-v1.5.7-to-KernelSU-Next.patch ./
-          # #   patch -p1 --forward --fuzz=3 < kernel-patch-susfs-v1.5.7-to-KernelSU-Next.patch || true
-          # #   # 临时补丁
-          # #   curl -LSs "https://github.com/zzh20188/GKI_KernelSU_SUSFS/raw/refs/heads/dev/fix_ksun_susfs.patch" -o fix_ksun_susfs.patch
-          # #   echo '应用KSUN临时修复补丁'
-          # #   patch -p1 --forward < fix_ksun_susfs.patch
-          #   sed -i '/bool ksu_devpts_hook = false;/d' ./kernel/sucompat.c
-          elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
-            echo "Applying SUSFS patches for MKSU..."
-             cd ./KernelSU
-            cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
-            patch -p1 --forward --fuzz=3 < 10_enable_susfs_for_ksu.patch || true
-
-            echo "Applying MKSU specific SUSFS patch..."
-            cp ../../kernel_patches/mksu/mksu_susfs.patch ./
-            patch -p1 < mksu_susfs.patch || true
-            cp ../../kernel_patches/mksu/fix.patch ./
-            patch -p1 < fix.patch || true
+            echo "No need to enable SusFS for KernelSU-Next (already embedded)"
+            cd ./KernelSU-Next
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            echo "Applying SUSFS patches for SukiSU..."
-            cd ./KernelSU
-            if [ ${{ inputs.kernelsu_branch }} == "Stable" ]; then
-              echo "Stable branch detected. Trying to apply official patches (might not work)"
-              cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
-              patch -p1 --forward --fuzz=3 < 10_enable_susfs_for_ksu.patch || true
-            fi
-          elif [ "${{ inputs.kernelsu_variant }}" == "WKSU" ]; then
-            echo "Applying SUSFS patches for WKSU..."
-            cd ./Wild_KSU
-          elif [ "${{ inputs.kernelsu_variant }}" == "MamboSU" ]; then
-            echo "Looks like MamboSU doesn't need any additional patches. Skipping for now..."
+            echo "No need to enable SusFS for SukiSU (already embedded)"
             cd ./KernelSU
           elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
-            echo "Looks like ReSukiSU doesn't need any additional patches. Skipping for now..."
+            echo "No need to enable SusFS for ReSukiSU (already embedded)"
             cd ./KernelSU
           elif [ "${{ inputs.kernelsu_variant }}" == "KowSU" ]; then
             echo "Adding susfs4ksu support for KowSU"
             cd KernelSU
-            patch -p1 < <(curl -sL "https://github.com/midori01/KernelSU/commit/kow.patch")
+            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~1.patch")
+          elif [ "${{ inputs.kernelsu_variant }}" == "xxKSU" ]; then
+            echo "Adding susfs4ksu support for xxKSU"
+            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx~1.patch")
           else
             echo "Invalid KernelSU variant selected!"
             exit 1
           fi
 
       - name: Apply susfs4ksu patches
-        if: ${{ inputs.use_susfs }}
+        if: if: ${{ inputs.use_susfs && inputs.kernelsu_variant != 'None' }}
         run: |
           cd "$CONFIG"
-          if [[ "${{ inputs.use_superbuilders_susfs }}" == "false" || "$SUPER_DIR" == "UNSUPPORTED" ]]; then
-            echo "Using simonpunk's patch"
-            cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common/
-            cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
-            cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
-            cd common
+          echo "Applying SusFS4KSU - Official patch"
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common/
+          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+          cd common
+          if [[ "${{ inputs.kernelsu_variant }}" == "KowSU" || "${{ inputs.kernelsu_variant }}" == "xxKSU" ]]; then
+            echo "This KSU variant requires de-inlined patch."
             echo "Generating de-inlined patch..."
             cd ../..
             git clone https://github.com/midori01/gki_ksu_workflow.git
@@ -587,59 +497,10 @@ jobs:
             bash "../../gki_ksu_workflow/.github/scripts/susfs_deinlined.sh" "./50_add_susfs_in_gki-android15-6.6.patch"
             patch -p1 --fuzz=3 < deinlined.patch
           else
-            echo "Using SuperBuilders patch"
-            cp ../$SUPER_DIR/50_add_susfs_in_gki-android15-6.6.patch ./common
-            cd common
-            patch -p1 --fuzz=3 < 50_add_susfs_in_gki-android15-6.6.patch || true
+            echo "No de-inlined patch is needed for this KSU variant"
+            patch -p1 --fuzz=3 < 50_add_susfs_in_gki-android15-6.6.patch
           fi
-      - name: Apply susfs4ksu enhanced patch
-        if: ${{ inputs.use_susfs && inputs.use_enhanced_susfs && github.env.SUPER_DIR != 'UNSUPPORTED' }}
-        run: |
-          cd "$CONFIG"
-          echo "Apply enhanced susfs4ksu patch"
-          cp ../$SUPER_DIR/51_enhanced_susfs-android15-6.6.patch ./common
-          cd common
-          patch -p1 --fuzz=3 < 51_enhanced_susfs-android15-6.6.patch || true
-          cd ..
-
-          echo "Enable extra features in KSU"
-          cp ../$SUPER_DIR/$KSU_ENHANCED_PATCH ./$KSU_DIR
-          cd "$KSU_DIR"
-          patch -p1 --fuzz=3 < $KSU_ENHANCED_PATCH
-      - name: some fixes
-        run: |
-          cd "$CONFIG/common"
-          FORMATTED_BRANCH="android15-6.6"
-          # Fake Patch to fix failures
-          fake_patched=0
-          if [ "$FORMATTED_BRANCH" = "android15-6.6" ]; then
-            if ! grep -qxF $'\tunsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;' ./fs/proc/task_mmu.c; then
-              echo "未找到 nr_subpages,正在进行补丁修复"
-              sed -i -e '/int ret = 0, copied = 0;/a \\tunsigned int nr_subpages \= __PAGE_SIZE \/ PAGE_SIZE;' -e '/int ret = 0, copied = 0;/a \\tpagemap_entry_t \*res = NULL;' ./fs/proc/task_mmu.c
-              fake_patched=1
-            fi
-          fi
-          
-          if [ "$FORMATTED_BRANCH" = "android12-5.10" ] || [ "$FORMATTED_BRANCH" = "android13-5.10" ] || [ "$FORMATTED_BRANCH" = "android13-5.15" ]; then
-            if ! grep -qxF $'\tif (!vma_pages(vma))' ./fs/proc/task_mmu.c; then
-              echo "未找到 vma_pages,正在进行补丁修复"
-              fake_patched=1
-            fi
-          fi
-
-          if [ "$fake_patched" = 1 ]; then
-            if [ "$FORMATTED_BRANCH" = "android15-6.6" ]; then
-              if grep -qxF $'\tunsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;' ./fs/proc/task_mmu.c; then
-                sed -i -e '/unsigned int nr_subpages \= __PAGE_SIZE \/ PAGE_SIZE;/d' -e '/pagemap_entry_t \*res = NULL;/d' ./fs/proc/task_mmu.c
-              fi
-            fi
-            
-            if [ "$FORMATTED_BRANCH" = "android12-5.10" ] || [ "$FORMATTED_BRANCH" = "android13-5.10" ] || [ "$FORMATTED_BRANCH" = "android13-5.15" ]; then
-              if grep -qxF $'\t\tgoto show_pad;' ./fs/proc/task_mmu.c; then
-                sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
-              fi
-            fi
-          fi
+      
   
       - name: Zero-width character fix
         run: |
@@ -647,17 +508,6 @@ jobs:
           cd "$CONFIG/common"
           patch -p1 < unicode_bypass_fix_6.1+.patch
       
-      - name: Apply ZeroMount VFS kernel patch
-        if: ${{ inputs.use_zeromount }}
-        run: |
-          if [ "$SUPER_DIR" == "UNSUPPORTED" ]; then
-            echo "Be cautioned! You're applying ZeroMount VFS patch on an unsupported ksu variant. Stuff may fail!"
-            cp ./SuperBuilders/android15-6.6/WildKSU/patches/60_zeromount-android15-6.6.patch ./$CONFIG/common
-          else
-            cp ./$SUPER_DIR/60_zeromount-android15-6.6.patch ./$CONFIG/common
-          fi
-          cd "$CONFIG/common"
-          patch -p1 --fuzz=3 < 60_zeromount-android15-6.6.patch
       - name: Add SUSFS & KSU into defconfig - Legacy Build.sh
         if: ${{ !inputs.use_bazel }}
         run: |
@@ -666,17 +516,16 @@ jobs:
           echo "Adding configuration settings to defconfig..."
 
           # Add KSU configuration settings
-          echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/$DEFCONFIG
+          if [ "${{ inputs.kernelsu_variant }}" != "None" ]; then 
+            echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/$DEFCONFIG
+          fi
 
           if [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "CONFIG_KSU_KPROBES_HOOK=n" >> ./common/arch/arm64/configs/$DEFCONFIG
             echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/$DEFCONFIG
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/$DEFCONFIG
+            #echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/$DEFCONFIG
             echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/$DEFCONFIG
-          elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
-            echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/$DEFCONFIG
-          fi
           
           # Add additional tmpfs config setting
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/$DEFCONFIG
@@ -695,7 +544,7 @@ jobs:
           echo "CONFIG_TCP_CONG_WESTWOOD=n" >> ./common/arch/arm64/configs/$DEFCONFIG
           echo "CONFIG_TCP_CONG_HTCP=n" >> ./common/arch/arm64/configs/$DEFCONFIG
 
-          if [ "${{ inputs.use_susfs }}" == "true" ]; then
+          if [[ "${{ inputs.kernelsu_variant }}" != "None" && "${{ inputs.use_susfs }}" == "true" ]]; then
             # Add SUSFS configuration settings
             echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/$DEFCONFIG
             echo "CONFIG_KSU_SUSFS_SUS_MAP=y" >> ./common/arch/arm64/configs/$DEFCONFIG
@@ -707,24 +556,6 @@ jobs:
             echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/$DEFCONFIG
             echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/$DEFCONFIG
             echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/$DEFCONFIG
-            # Enhanced susfs
-            if [ "${{ inputs.use_enhanced_susfs }}" == "true" ]; then
-              echo "CONFIG_KSU_SUSFS_SUS_KSTAT_REDIRECT=y" >> ./common/arch/arm64/configs/$DEFCONFIG
-              echo "CONFIG_KSU_SUSFS_UNICODE_FILTER=y" >> ./common/arch/arm64/configs/$DEFCONFIG
-              echo "CONFIG_KSU_SUSFS_HIDDEN_NAME=y" >> ./common/arch/arm64/configs/$DEFCONFIG
-              echo "CONFIG_KSU_SUSFS_HARDENED=y" >> ./common/arch/arm64/configs/$DEFCONFIG
-            fi
-          fi
-          
-          # Add NoMount config
-          
-          if [ "${{ inputs.nomount_support }}" == "true" ]; then
-            echo "CONFIG_NOMOUNT=y" >> ./common/arch/arm64/configs/$DEFCONFIG
-          fi
-
-          # ZeroMount config
-          if [ "${{ inputs.use_zeromount }}" == "true" ]; then
-            echo "CONFIG_ZEROMOUNT=y" >> ./common/arch/arm64/configs/$DEFCONFIG
           fi
           
           # Remove check_defconfig
@@ -750,8 +581,9 @@ jobs:
           # ============================================================
           # KernelSU
           # ============================================================
-
-          kconfig -e KSU
+          if [ "${{ inputs.kernelsu_variant }}" != "None" ]; then 
+            kconfig -e KSU
+          fi
 
           case "${{ inputs.kernelsu_variant }}" in
             "Next")
@@ -762,7 +594,6 @@ jobs:
 
             "SukiSU")
           	kconfig \
-          	  -e KPM \
           	  -d KSU_SUSFS_SUS_SU
           	;;
 
@@ -817,31 +648,6 @@ jobs:
           	-e KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS \
           	-e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG \
           	-e KSU_SUSFS_OPEN_REDIRECT
-
-            # Enhanced SUSFS
-            if [ "${{ inputs.use_enhanced_susfs }}" = "true" ]; then
-          	kconfig \
-          	  -e KSU_SUSFS_SUS_KSTAT_REDIRECT \
-          	  -e KSU_SUSFS_UNICODE_FILTER \
-          	  -e KSU_SUSFS_HIDDEN_NAME \
-          	  -e KSU_SUSFS_HARDENED
-            fi
-          fi
-
-          # ============================================================
-          # NoMount
-          # ============================================================
-
-          if [ "${{ inputs.nomount_support }}" = "true" ]; then
-            kconfig -e NOMOUNT
-          fi
-
-          # ============================================================
-          # ZeroMount
-          # ============================================================
-
-          if [ "${{ inputs.use_zeromount }}" = "true" ]; then
-            kconfig -e ZEROMOUNT
           fi
 
       - name: Build with retry
