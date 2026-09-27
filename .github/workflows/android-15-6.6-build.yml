@@ -456,8 +456,7 @@ jobs:
           if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "Applying SUSFS patches for Official KernelSU..."
             cd ./KernelSU
-            cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
-            patch -p1 --forward --fuzz=3 < 10_enable_susfs_for_ksu.patch
+            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official~1.patch")
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "No need to enable SusFS for KernelSU-Next (already embedded)"
             cd ./KernelSU-Next
@@ -488,7 +487,7 @@ jobs:
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
           cd common
-          if [[ "${{ inputs.kernelsu_variant }}" == "KowSU" || "${{ inputs.kernelsu_variant }}" == "xxKSU" ]]; then
+          if [[ "${{ inputs.kernelsu_variant }}" == "KowSU" || "${{ inputs.kernelsu_variant }}" == "xxKSU" || "${{ inputs.kernelsu_variant }}" == "Official" ]]; then
             echo "This KSU variant requires de-inlined patch."
             echo "Generating de-inlined patch..."
             cd ../..
