@@ -307,9 +307,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/kleaf-bazel
-          key: kleaf-${{ runner.os }}-android15-6.6-${{ hashFiles('bazel_cache_key.txt') }}-${{ github.run_id }}
+          key: kleaf-${{ runner.os }}-android15-6.6-${{ hashFiles('kernel_url.txt') }}-${{ github.run_id }}
           restore-keys: |
-            kleaf-${{ runner.os }}-android15-6.6-${{ hashFiles('bazel_cache_key.txt') }}-
+            kleaf-${{ runner.os }}-android15-6.6-${{ hashFiles('kernel_url.txt') }}-
 
       - name: Clone custom source
         if: ${{ inputs.custom_kernel_source != 'rodin' }}
