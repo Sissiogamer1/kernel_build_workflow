@@ -384,6 +384,7 @@ jobs:
             curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash $BRANCH
             cd KernelSU
             patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official~2.patch")
+            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official~1.patch")
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "Adding KernelSU Next..."
             curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/refs/heads/dev-susfs/kernel/setup.sh" | bash $BRANCH
@@ -399,11 +400,12 @@ jobs:
             echo "Adding KowSU..."
             curl -LSs "https://raw.githubusercontent.com/KOWX712/KernelSU/refs/heads/master/kernel/setup.sh" | bash $BRANCH
             patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~2.patch")
+            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~1.patch")
             
           elif [ "${{ inputs.kernelsu_variant }}" == "xxKSU" ]; then
-            echo "Adding KowSU..."
+            echo "Adding xxKSU..."
             curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh" | bash $BRANCH
-            
+            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx~1.patch")
           fi
 
       - name: Add Baseband-guard support
@@ -456,7 +458,7 @@ jobs:
           if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "Applying SUSFS patches for Official KernelSU..."
             cd ./KernelSU
-            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official~1.patch")
+            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official.patch")
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "No need to enable SusFS for KernelSU-Next (already embedded)"
             cd ./KernelSU-Next
@@ -469,10 +471,10 @@ jobs:
           elif [ "${{ inputs.kernelsu_variant }}" == "KowSU" ]; then
             echo "Adding susfs4ksu support for KowSU"
             cd KernelSU
-            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~1.patch")
+            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow.patch")
           elif [ "${{ inputs.kernelsu_variant }}" == "xxKSU" ]; then
             echo "Adding susfs4ksu support for xxKSU"
-            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx~1.patch")
+            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx.patch")
           else
             echo "Invalid KernelSU variant selected!"
             exit 1
