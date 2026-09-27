@@ -526,7 +526,7 @@ jobs:
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             #echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/$DEFCONFIG
             echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/$DEFCONFIG
-          
+          fi
           # Add additional tmpfs config setting
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/$DEFCONFIG
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> ./common/arch/arm64/configs/$DEFCONFIG
@@ -560,7 +560,6 @@ jobs:
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
-        
         
       - name: Add SUSFS & KSU into defconfig - Bazel
         if: ${{ inputs.use_bazel }}
