@@ -636,7 +636,7 @@ jobs:
           # SUSFS
           # ============================================================
 
-          if [ "${{ inputs.use_susfs }}" = "true" ]; then
+          if [[ "${{ inputs.kernelsu_variant }}" != "None" && "${{ inputs.use_susfs }}" == "true" ]]; then
             kconfig \
           	-e KSU_SUSFS \
           	-e KSU_SUSFS_SUS_MAP \
