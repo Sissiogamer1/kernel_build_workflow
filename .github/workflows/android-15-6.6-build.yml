@@ -480,7 +480,7 @@ jobs:
           fi
 
       - name: Apply susfs4ksu patches
-        if: if: ${{ inputs.use_susfs && inputs.kernelsu_variant != 'None' }}
+        if: ${{ inputs.use_susfs && inputs.kernelsu_variant != 'None' }}
         run: |
           cd "$CONFIG"
           echo "Applying SusFS4KSU - Official patch"
