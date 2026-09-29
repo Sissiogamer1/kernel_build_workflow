@@ -550,7 +550,7 @@ jobs:
           fi
           if [ "${{ inputs.BBG }}" == "true" ]; then
             echo "CONFIG_BBG=y" >> ./common/arch/arm64/configs/$DEFCONFIG
-            if [ -z "${{ inputs.BBG_config" ]; then
+            if [ -z "${{ inputs.BBG_config }}" ]; then
               if ! grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG; then
                 echo "CONFIG_LSM=\"landlock,lockdown,yama,loadpin,safesetid,selinux,smack,tomoyo,apparmor,bpf,baseband_guard\"" >> ./common/arch/arm64/configs/$DEFCONFIG
                 grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG
