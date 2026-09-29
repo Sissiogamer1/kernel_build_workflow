@@ -551,15 +551,15 @@ jobs:
           if [ "${{ inputs.BBG }}" == "true" ]; then
             echo "CONFIG_BBG=y" >> ./common/arch/arm64/configs/$DEFCONFIG
             if [ -z "${{ inputs.BBG_config }}" ]; then
-              if ! grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG; then
+              if ! grep "CONFIG_LSM=" ./common/arch/arm64/configs/$DEFCONFIG; then
                 echo "CONFIG_LSM=\"landlock,lockdown,yama,loadpin,safesetid,selinux,smack,tomoyo,apparmor,bpf,baseband_guard\"" >> ./common/arch/arm64/configs/$DEFCONFIG
-                grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG
-              elif ! grep -qE 'CONFIG_LSM=.*\bbaseband_guard\b' arch/arm64/configs/$DEFCONFIG; then
-                sed -i '/^CONFIG_LSM=/s/"$/,baseband_guard"/' arch/arm64/configs/$DEFCONFIG
+                grep "CONFIG_LSM=" ./common/arch/arm64/configs/$DEFCONFIG
+              elif ! grep -qE 'CONFIG_LSM=.*\bbaseband_guard\b' ./common/arch/arm64/configs/$DEFCONFIG; then
+                sed -i '/^CONFIG_LSM=/s/"$/,baseband_guard"/' ./common/arch/arm64/configs/$DEFCONFIG
               fi
             else
-              sed -i '/^CONFIG_LSM=/d' arch/arm64/configs/$DEFCONFIG
-              echo "${{ inputs.BBG_config }}" >> arch/arm64/configs/$DEFCONFIG
+              sed -i '/^CONFIG_LSM=/d' ./common/arch/arm64/configs/$DEFCONFIG
+              echo "${{ inputs.BBG_config }}" >> ./common/arch/arm64/configs/$DEFCONFIG
             fi
             
           fi
@@ -657,15 +657,15 @@ jobs:
           if [ "${{ inputs.BBG }}" == "true" ]; then
             kconfig -e BBG
             if [ -z "${{ inputs.BBG_config }}" ]; then
-              if ! grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG; then
+              if ! grep "CONFIG_LSM=" ./common/arch/arm64/configs/$DEFCONFIG; then
                 echo "CONFIG_LSM=\"landlock,lockdown,yama,loadpin,safesetid,selinux,smack,tomoyo,apparmor,bpf,baseband_guard\"" >> ./common/arch/arm64/configs/$DEFCONFIG
-                grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG
-              elif ! grep -qE 'CONFIG_LSM=.*\bbaseband_guard\b' arch/arm64/configs/$DEFCONFIG; then
-                sed -i '/^CONFIG_LSM=/s/"$/,baseband_guard"/' arch/arm64/configs/$DEFCONFIG
+                grep "CONFIG_LSM=" ./common/arch/arm64/configs/$DEFCONFIG
+              elif ! grep -qE 'CONFIG_LSM=.*\bbaseband_guard\b' ./common/arch/arm64/configs/$DEFCONFIG; then
+                sed -i '/^CONFIG_LSM=/s/"$/,baseband_guard"/' ./common/arch/arm64/configs/$DEFCONFIG
               fi
             else
-              sed -i '/^CONFIG_LSM=/d' arch/arm64/configs/$DEFCONFIG
-              echo "${{ inputs.BBG_config }}" >> arch/arm64/configs/$DEFCONFIG
+              sed -i '/^CONFIG_LSM=/d' ./common/arch/arm64/configs/$DEFCONFIG
+              echo "${{ inputs.BBG_config }}" >> ./common/arch/arm64/configs/$DEFCONFIG
             fi
           fi
 
