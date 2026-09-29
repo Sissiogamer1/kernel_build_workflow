@@ -8,6 +8,16 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      custom_kernel_source:
+        description: "Git source of the kernel to compile. Can append git command line options to here"
+        required: false
+        type: string
+        default: 'https://github.com/tmnasd/smol-rodin-kernel.git --depth 1'
+      defconfig_name:
+        description: "Specify defconfig name to use to compile kernel source. Must exist in ./arch/arm64/configs"
+        required: true
+        type: string
+        default: smol_defconfig
       kernelsu_variant:
         description: "Kernel SU Variant"
         required: true
@@ -39,17 +49,32 @@ on:
         required: true
         type: boolean
         default: true
+      custom_susfs_commit_hash:
+        description: "Susfs4ksu custom commit hash. Use latest to get latest commit"
+        required: false
+        type: string
+        default: latest
       
-      use_zram:
-        description: 'Add ZRAM'
-        required: true
-        type: boolean
-        default: false
       BBG:
         description: "Enable kernel-level blocking of unauthorized writes to critical partitions/device nodes (LSM)？"
         required: true
         type: boolean
         default: true
+      BBG_config:
+        description: "Specify value to be used in CONFIG_LSM for BBG. Leave blank if you want to use generic value (may be incompatible with some kernel source)"
+        required: false
+        type: string
+        default: ""
+      use_zram:
+        description: 'Add ZRAM'
+        required: true
+        type: boolean
+        default: false
+      legacy_config_edit:
+        description: "Use append (>>) instead of config script. Only enable if the config script is not available. May cause bad overrides & conflicts"
+        required: true
+        type: boolean
+        default: false
       use_ccache:
         description: "Use CCache/Bazel cache to cache the compilation result. This helps speed up later compile session, but requires a supported build script"
         required: false
@@ -65,28 +90,11 @@ on:
         required: true
         type: boolean
         default: true
-      custom_kernel_source:
-        description: "Git source of the kernel to compile. Can append git command line options to here"
-        required: false
-        type: string
-        default: 'https://github.com/tmnasd/smol-rodin-kernel.git --depth 1'
-      defconfig_name:
-        description: "Specify defconfig name to use to compile kernel source. Must exist in ./arch/arm64/configs"
-        required: true
-        type: string
-        default: smol_defconfig
-      custom_susfs_commit_hash:
-        description: "Susfs4ksu custom commit hash. Use latest to get latest commit"
-        required: false
-        type: string
-        default: latest
-      
       clang_custom_link:
         description: "Clang link you want to use to compile the kernel"
         required: true
         type: string
         default: https://github.com/ZyCromerZ/Clang/releases/download/23.0.0git-20260129-release/Clang-23.0.0git-20260129.tar.gz
-        
       use_bazel:
         description: "Use Bazel to build the kernel"
         required: true
@@ -424,25 +432,7 @@ jobs:
           echo "Setting up Baseband-Guard"
           wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
           
-          if [[ "$HAS_BBG" == "false" ]]; then
-            echo "Enable Baseband-Guard in defconfig"
-            CONFIG_FILE="arch/arm64/configs/$DEFCONFIG"
-            echo "CONFIG_BBG=y" >> "$CONFIG_FILE"
-            #echo "CONFIG_LSM=\"landlock,lockdown,yama,loadpin,safesetid,selinux,smack,tomoyo,apparmor,bpf,baseband_guard\"" >> "$CONFIG_FILE"
-          
-            # 对于 GitHub Actions 云编译，修改 LSM Kconfig
-            echo "Modify security/Kconfig to include baseband_guard..."
-            sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
-
-            sed -i '/^CONFIG_LSM=/s/"$/,baseband_guard"/' arch/arm64/configs/$DEFCONFIG
-          fi
-          # Verify changes
-          if ! grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG; then
-              echo "CONFIG_LSM=\"landlock,lockdown,yama,loadpin,safesetid,selinux,smack,tomoyo,apparmor,bpf,baseband_guard\"" >> "$CONFIG_FILE"
-              grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG
-          fi
-          
-          echo "Setup completed"
+          echo "Setup completed. CONFIG_LSM edit may still be required"
 
       
       - name: Enable susfs4ksu in ksu
@@ -510,7 +500,7 @@ jobs:
           patch -p1 < unicode_bypass_fix_6.1+.patch
       
       - name: Add SUSFS & KSU into defconfig - Legacy Build.sh
-        if: ${{ !inputs.use_bazel }}
+        if: ${{ inputs.legacy_config_edit }}
         run: |
           echo "更改为配置目录: $CONFIG..."
           cd "$CONFIG"
@@ -558,12 +548,27 @@ jobs:
             echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/$DEFCONFIG
             echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/$DEFCONFIG
           fi
+          if [ "${{ inputs.BBG }}" == "true" ]; then
+            echo "CONFIG_BBG=y" >> ./common/arch/arm64/configs/$DEFCONFIG
+            if [ -z "${{ inputs.BBG_config" ]; then
+              if ! grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG; then
+                echo "CONFIG_LSM=\"landlock,lockdown,yama,loadpin,safesetid,selinux,smack,tomoyo,apparmor,bpf,baseband_guard\"" >> ./common/arch/arm64/configs/$DEFCONFIG
+                grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG
+              elif ! grep -qE 'CONFIG_LSM=.*\bbaseband_guard\b' arch/arm64/configs/$DEFCONFIG; then
+                sed -i '/^CONFIG_LSM=/s/"$/,baseband_guard"/' arch/arm64/configs/$DEFCONFIG
+              fi
+            else
+              sed -i '/^CONFIG_LSM=/d' arch/arm64/configs/$DEFCONFIG
+              echo "${{ inputs.BBG_config }}" >> arch/arm64/configs/$DEFCONFIG
+            fi
+            
+          fi
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
         
       - name: Add SUSFS & KSU into defconfig - Bazel
-        if: ${{ inputs.use_bazel }}
+        if: ${{ !inputs.legacy_config_edit }}
         run: |
           echo "Current Working Dir: $CONFIG..."
           cd "$CONFIG"
@@ -648,6 +653,20 @@ jobs:
           	-e KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS \
           	-e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG \
           	-e KSU_SUSFS_OPEN_REDIRECT
+          fi
+          if [ "${{ inputs.BBG }}" == "true" ]; then
+            kconfig -e BBG
+            if [ -z "${{ inputs.BBG_config" ]; then
+              if ! grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG; then
+                echo "CONFIG_LSM=\"landlock,lockdown,yama,loadpin,safesetid,selinux,smack,tomoyo,apparmor,bpf,baseband_guard\"" >> ./common/arch/arm64/configs/$DEFCONFIG
+                grep "CONFIG_LSM=" arch/arm64/configs/$DEFCONFIG
+              elif ! grep -qE 'CONFIG_LSM=.*\bbaseband_guard\b' arch/arm64/configs/$DEFCONFIG; then
+                sed -i '/^CONFIG_LSM=/s/"$/,baseband_guard"/' arch/arm64/configs/$DEFCONFIG
+              fi
+            else
+              sed -i '/^CONFIG_LSM=/d' arch/arm64/configs/$DEFCONFIG
+              echo "${{ inputs.BBG_config }}" >> arch/arm64/configs/$DEFCONFIG
+            fi
           fi
 
       - name: Build with retry
