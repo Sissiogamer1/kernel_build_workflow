@@ -193,7 +193,7 @@ jobs:
           KERNEL_ROOT="$GITHUB_WORKSPACE/$CONFIG"
           echo "KERNEL_ROOT=$KERNEL_ROOT" >> $GITHUB_ENV
       - name: Generate Toolchain Key
-        if: ${{ !inputs.use_bazel }}
+        if: ${{ inputs.clang_custom_link != '' }}
         run: echo "${{ inputs.clang_custom_link }}" > clang_url.txt
       - name: Cache AOSP Clang
         if: ${{ !inputs.use_bazel }}
@@ -203,7 +203,7 @@ jobs:
           path: ${{ github.workspace }}/android15-6.6/toolchains/clang  # The directory where you install clang
           key: clang-${{ hashFiles('clang_url.txt') }}
       - name: Download AOSP Clang
-        if: ${{ !inputs.use_bazel && steps.cache-clang.outputs.cache-hit != 'true' }}
+        if: ${{ inputs.clang_custom_link != '' && steps.cache-clang.outputs.cache-hit != 'true' }}
         run: |
           # Create a directory for Clang
           mkdir -p $CONFIG/toolchains/clang
@@ -218,11 +218,11 @@ jobs:
           # Clean up the tarball to save disk space
           rm clang.tar.gz
       - name: Install AOSP Clang
-        if: ${{ !inputs.use_bazel }}
+        if: ${{ inputs.clang_custom_link != '' }}
         run: echo "$CONFIG/toolchains/clang/bin" >> $GITHUB_PATH
 
       - name: Verify Clang Installation
-        if: ${{ !inputs.use_bazel }}
+        if: ${{ inputs.clang_custom_link != '' }}
         run: |
           clang --version
       
