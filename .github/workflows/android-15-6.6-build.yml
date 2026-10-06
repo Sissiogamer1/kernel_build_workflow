@@ -65,6 +65,16 @@ on:
         required: false
         type: string
         default: ""
+      bypass_charge_evonix:
+        description: "Apply EVONIX's bypass charging patches"
+        required: false
+        type: boolean
+        default: false
+      zwc_patch:
+        description: "Apply fix ZWC patch to avoid path leaking. If the kernel source already fixed the issue, you don't need it"
+        required: false
+        type: boolean
+        default: true
       use_zram:
         description: 'Add ZRAM'
         required: true
@@ -492,8 +502,14 @@ jobs:
             patch -p1 --fuzz=3 < 50_add_susfs_in_gki-android15-6.6.patch
           fi
       
-  
+      - name: Apply EVONIX's bypass charging patches
+        if: ${{ inputs.bypass_charge_evonix }}
+        run: |
+          patch -p1 --fuzz=3 < <(curl -sSfL "https://github.com/tmnasd/Xiaomi_Rodin_Kernel_Enhance/commit/7154f9d04c3d47d20c70b9228b172b75c1db65e8.patch")
+          patch -p1 --fuzz=3 < <(curl -sSfL "https://github.com/tmnasd/Xiaomi_Rodin_Kernel_Enhance/commit/d0af17938287f146412cda59c9bb634493b3837b.patch")
+          patch -p1 --fuzz=3 < <(curl -sSfL "https://github.com/tmnasd/Xiaomi_Rodin_Kernel_Enhance/commit/ce47702884a128bd4d1643436bfe613259e68f23.patch")
       - name: Zero-width character fix
+        if: ${{ inputs.zwc_patch }}
         run: |
           cp ./kernel_patches/common/unicode_bypass_fix_6.1+.patch ./$CONFIG/common/
           cd "$CONFIG/common"
