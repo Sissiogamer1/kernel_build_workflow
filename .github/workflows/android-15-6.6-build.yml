@@ -175,10 +175,12 @@ jobs:
         if: ${{ inputs.use_ccache && !inputs.use_bazel }}
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ccache python3 git curl
 
-      - name: Install pahole
+      - name: Install kernel build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y pahole
+          sudo apt-get install -y \
+            bc bison cpio flex lz4 openssl pahole \
+            libelf-dev libssl-dev rsync zstd
           pahole --version
 
       - name: Configure CCache

@@ -88,7 +88,9 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ccache python3 git curl pahole
+          sudo apt-get install -y \
+            bc bison ccache cpio curl flex git lz4 openssl pahole \
+            libelf-dev libssl-dev python3 rsync zstd
           pahole --version
 
       - name: Configure CCache
