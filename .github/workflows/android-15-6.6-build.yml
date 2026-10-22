@@ -59,7 +59,7 @@ on:
         description: "Enable kernel-level blocking of unauthorized writes to critical partitions/device nodes (LSM)？"
         required: true
         type: boolean
-        default: true
+        default: false
       BBG_config:
         description: "Specify value to be used in CONFIG_LSM for BBG. Leave blank if you want to use generic value (may be incompatible with some kernel source)"
         required: false
