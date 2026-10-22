@@ -29,7 +29,12 @@ on:
           - KowSU
           - BakaSU
           - SukiSU
+          - SukiSU-Ultra
           - xxKSU
+          - MKSU
+          - JingMatrix KernelSU
+          - FinaSU
+          - MamboSU
         default: KowSU
       kernelsu_branch:
         description: "KSU Branch"
@@ -369,9 +374,13 @@ jobs:
               case "$variant_input" in
                 "Official" | "BakaSU")   echo "BRANCH=-s main" >> $GITHUB_ENV ;;
                 "Next")                  echo "BRANCH=-s dev-susfs" >> $GITHUB_ENV ;;
-                "SukiSU")                echo "BRANCH=-s builtin" >> $GITHUB_ENV ;;
+                "SukiSU" | "SukiSU-Ultra") echo "BRANCH=-s builtin" >> $GITHUB_ENV ;;
                 "KowSU")                 echo "BRANCH=-s master" >> $GITHUB_ENV ;;
                 "xxKSU")                 echo "BRANCH=-s master" >> $GITHUB_ENV ;;
+                "MKSU")                  echo "BRANCH=-s main" >> $GITHUB_ENV ;;
+                "JingMatrix KernelSU")   echo "BRANCH=-s dev" >> $GITHUB_ENV ;;
+                "FinaSU")                echo "BRANCH=-s master" >> $GITHUB_ENV ;;
+                "MamboSU")               echo "BRANCH=-s master" >> $GITHUB_ENV ;;
                 *) 
                   echo "Invalid choice '$variant_input'" >&2
                   exit 1
@@ -380,11 +389,15 @@ jobs:
               ;;
             "Dev")
               case "$variant_input" in
-                "SukiSU")                         echo "BRANCH=-s builtin" >> $GITHUB_ENV ;;
+                "SukiSU" | "SukiSU-Ultra")        echo "BRANCH=-s builtin" >> $GITHUB_ENV ;;
                 "Next")                           echo "BRANCH=-s dev-susfs" >> $GITHUB_ENV  ;;
                 "Official" | "BakaSU")            echo "BRANCH=-s main" >> $GITHUB_ENV ;;
                 "KowSU")                          echo "BRANCH=-s master" >> $GITHUB_ENV ;;
                 "xxKSU")                          echo "BRANCH=-s master" >> $GITHUB_ENV ;;
+                "MKSU")                           echo "BRANCH=-s main" >> $GITHUB_ENV ;;
+                "JingMatrix KernelSU")            echo "BRANCH=-s dev" >> $GITHUB_ENV ;;
+                "FinaSU")                         echo "BRANCH=-s master" >> $GITHUB_ENV ;;
+                "MamboSU")                        echo "BRANCH=-s master" >> $GITHUB_ENV ;;
                 *) 
                   echo "Invalid choice '$variant_input'" >&2
                   exit 1
@@ -403,37 +416,72 @@ jobs:
       - name: Add KernelSU
         if: ${{ inputs.kernelsu_variant != 'None' }}
         run: |
-          echo "更改为配置目录: $CONFIG..."
+          echo "Changing to config dir: $CONFIG..."
           cd "$CONFIG"
-          if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
-            echo "Adding KernelSU Official..."
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash $BRANCH
-            cd KernelSU
-            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official~2.patch")
-            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official~1.patch")
-          elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
-            echo "Adding KernelSU Next..."
-            curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/refs/heads/dev-susfs/kernel/setup.sh" | bash $BRANCH
-            cd KernelSU-Next
-          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            echo "Adding KernelSU SukiSU..."
-            curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
-            
-          elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
-            echo "Adding ReSukiSU..."
-            curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/refs/heads/main/kernel/setup.sh" | bash $BRANCH
-            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/resuki~1.patch")
-          elif [ "${{ inputs.kernelsu_variant }}" == "KowSU" ]; then
-            echo "Adding KowSU..."
-            curl -LSs "https://raw.githubusercontent.com/KOWX712/KernelSU/refs/heads/master/kernel/setup.sh" | bash $BRANCH
-            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~2.patch")
-            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~1.patch")
-            
-          elif [ "${{ inputs.kernelsu_variant }}" == "xxKSU" ]; then
-            echo "Adding xxKSU..."
-            curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh" | bash $BRANCH
-            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx~1.patch")
-          fi
+
+          # Some forks ship a setup.sh that clones upstream KernelSU instead of
+          # themselves. Clone the fork first so the script reuses that checkout.
+          add_fork_kernelsu() {
+            local repo="$1"
+            local ref="${BRANCH#-s }"
+            git clone "https://github.com/$repo.git" KernelSU
+            curl -LSs "https://raw.githubusercontent.com/$repo/$ref/kernel/setup.sh" | bash -s "$ref"
+          }
+
+          case "${{ inputs.kernelsu_variant }}" in
+            "Official")
+              echo "Adding KernelSU Official..."
+              curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash $BRANCH
+              cd KernelSU
+              patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official~2.patch")
+              patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official~1.patch")
+              ;;
+            "Next")
+              echo "Adding KernelSU Next..."
+              curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/refs/heads/dev-susfs/kernel/setup.sh" | bash $BRANCH
+              cd KernelSU-Next
+              ;;
+            "SukiSU" | "SukiSU-Ultra")
+              echo "Adding ${{ inputs.kernelsu_variant }}..."
+              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
+              ;;
+            "BakaSU" | "ReSukiSU")
+              echo "Adding BakaSU..."
+              curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/refs/heads/main/kernel/setup.sh" | bash $BRANCH
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/resuki~1.patch")
+              ;;
+            "KowSU")
+              echo "Adding KowSU..."
+              curl -LSs "https://raw.githubusercontent.com/KOWX712/KernelSU/refs/heads/master/kernel/setup.sh" | bash $BRANCH
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~2.patch")
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow~1.patch")
+              ;;
+            "xxKSU")
+              echo "Adding xxKSU..."
+              curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh" | bash $BRANCH
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx~1.patch")
+              ;;
+            "MKSU")
+              echo "Adding MKSU..."
+              add_fork_kernelsu "5ec1cff/KernelSU"
+              ;;
+            "JingMatrix KernelSU")
+              echo "Adding JingMatrix KernelSU..."
+              add_fork_kernelsu "JingMatrix/KernelSU"
+              ;;
+            "FinaSU")
+              echo "Adding FinaSU..."
+              add_fork_kernelsu "LyraVoid/FinaSU"
+              ;;
+            "MamboSU")
+              echo "Adding MamboSU..."
+              add_fork_kernelsu "RapliVx/KernelSU"
+              ;;
+            *)
+              echo "Invalid KernelSU variant selected!" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Add Baseband-guard support
         if: ${{ inputs.BBG }}
@@ -464,30 +512,46 @@ jobs:
 
           # Copy SUSFS patches
           
-          if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
-            echo "Applying SUSFS patches for Official KernelSU..."
-            cd ./KernelSU
-            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official.patch")
-          elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
-            echo "No need to enable SusFS for KernelSU-Next (already embedded)"
-            cd ./KernelSU-Next
-          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            echo "No need to enable SusFS for SukiSU (already embedded)"
-            cd ./KernelSU
-          elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
-            echo "No need to enable SusFS for ReSukiSU (already embedded)"
-            cd ./KernelSU
-          elif [ "${{ inputs.kernelsu_variant }}" == "KowSU" ]; then
-            echo "Adding susfs4ksu support for KowSU"
-            cd KernelSU
-            patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow.patch")
-          elif [ "${{ inputs.kernelsu_variant }}" == "xxKSU" ]; then
-            echo "Adding susfs4ksu support for xxKSU"
-            patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx.patch")
-          else
-            echo "Invalid KernelSU variant selected!"
-            exit 1
-          fi
+          case "${{ inputs.kernelsu_variant }}" in
+            "Official")
+              echo "Applying SUSFS patches for Official KernelSU..."
+              cd ./KernelSU
+              patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official.patch")
+              ;;
+            "Next")
+              echo "No need to enable SusFS for KernelSU-Next (already embedded)"
+              cd ./KernelSU-Next
+              ;;
+            "SukiSU" | "SukiSU-Ultra")
+              echo "No need to enable SusFS for ${{ inputs.kernelsu_variant }} (already embedded)"
+              cd ./KernelSU
+              ;;
+            "BakaSU" | "ReSukiSU")
+              echo "No need to enable SusFS for BakaSU (already embedded)"
+              cd ./KernelSU
+              ;;
+            "KowSU")
+              echo "Adding susfs4ksu support for KowSU"
+              cd KernelSU
+              patch -p1 < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow.patch")
+              ;;
+            "xxKSU")
+              echo "Adding susfs4ksu support for xxKSU"
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx.patch")
+              ;;
+            "MKSU" | "JingMatrix KernelSU" | "FinaSU")
+              echo "Adding susfs4ksu support for ${{ inputs.kernelsu_variant }}"
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official.patch")
+              ;;
+            "MamboSU")
+              echo "Adding susfs4ksu support for MamboSU"
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow.patch")
+              ;;
+            *)
+              echo "Invalid KernelSU variant selected!" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Apply susfs4ksu patches
         if: ${{ inputs.use_susfs && inputs.kernelsu_variant != 'None' }}
@@ -498,7 +562,7 @@ jobs:
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
           cd common
-          if [[ "${{ inputs.kernelsu_variant }}" == "KowSU" || "${{ inputs.kernelsu_variant }}" == "xxKSU" || "${{ inputs.kernelsu_variant }}" == "Official" ]]; then
+          if [[ "${{ inputs.kernelsu_variant }}" == "KowSU" || "${{ inputs.kernelsu_variant }}" == "xxKSU" || "${{ inputs.kernelsu_variant }}" == "Official" || "${{ inputs.kernelsu_variant }}" == "MKSU" || "${{ inputs.kernelsu_variant }}" == "JingMatrix KernelSU" || "${{ inputs.kernelsu_variant }}" == "FinaSU" || "${{ inputs.kernelsu_variant }}" == "MamboSU" ]]; then
             echo "This KSU variant requires de-inlined patch."
             echo "Generating de-inlined patch..."
             cd ../..
@@ -539,7 +603,7 @@ jobs:
           if [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "CONFIG_KSU_KPROBES_HOOK=n" >> ./common/arch/arm64/configs/$DEFCONFIG
             echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/$DEFCONFIG
-          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
+          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ] || [ "${{ inputs.kernelsu_variant }}" == "SukiSU-Ultra" ] || [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
             #echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/$DEFCONFIG
             echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/$DEFCONFIG
           fi
@@ -622,7 +686,7 @@ jobs:
           	  -d KSU_SUSFS_SUS_SU
           	;;
 
-            "SukiSU")
+            "SukiSU" | "SukiSU-Ultra")
           	kconfig \
           	  -d KSU_SUSFS_SUS_SU
           	;;

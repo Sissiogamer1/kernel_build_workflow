@@ -32,9 +32,28 @@ jobs:
           - variant: BakaSU
             use_susfs: true
             ksu_ref: main
+          - variant: SukiSU-Ultra
+            use_susfs: true
+            ksu_ref: builtin
           - variant: xxKSU
             use_susfs: true
             ksu_ref: master
+          - variant: MKSU
+            use_susfs: true
+            ksu_ref: main
+            ksu_repo: 5ec1cff/KernelSU
+          - variant: JingMatrix KernelSU
+            use_susfs: true
+            ksu_ref: dev
+            ksu_repo: JingMatrix/KernelSU
+          - variant: FinaSU
+            use_susfs: true
+            ksu_ref: master
+            ksu_repo: LyraVoid/FinaSU
+          - variant: MamboSU
+            use_susfs: true
+            ksu_ref: master
+            ksu_repo: RapliVx/KernelSU
     env:
       CONFIG: android15-6.6
       KERNEL_VERSION: "6.6"
@@ -43,6 +62,7 @@ jobs:
       CLANG_URL: "https://github.com/ZyCromerZ/Clang/releases/download/23.0.0git-20260129-release/Clang-23.0.0git-20260129.tar.gz"
       KSU_VARIANT: ${{ matrix.variant }}
       KSU_REF: ${{ matrix.ksu_ref }}
+      KSU_REPO: ${{ matrix.ksu_repo }}
       USE_SUSFS: ${{ matrix.use_susfs }}
       ARTIFACT_DIR: ${{ github.workspace }}/artifacts
       ANYKERNEL3: ${{ github.workspace }}/AnyKernel3
@@ -195,6 +215,20 @@ jobs:
               curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/refs/heads/main/kernel/setup.sh" | bash -s "$KSU_REF"
               patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/resuki~1.patch")
               ;;
+            SukiSU-Ultra)
+              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s "$KSU_REF"
+              ;;
+            *)
+              # Forks whose setup.sh clones upstream: clone the fork first so
+              # the script reuses that checkout instead of pulling the wrong repo.
+              if [ -z "${KSU_REPO:-}" ]; then
+                echo "No KSU repo configured for $KSU_VARIANT" >&2
+                exit 1
+              fi
+              echo "Cloning $KSU_REPO for $KSU_VARIANT..."
+              git clone "https://github.com/$KSU_REPO.git" KernelSU
+              curl -LSs "https://raw.githubusercontent.com/$KSU_REPO/$KSU_REF/kernel/setup.sh" | bash -s "$KSU_REF"
+              ;;
             xxKSU)
               curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s "$KSU_REF"
               patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx~1.patch")
@@ -246,6 +280,18 @@ jobs:
             xxKSU)
               patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx.patch")
               ;;
+            SukiSU-Ultra)
+              echo "KernelSU side SUSFS is already present in SukiSU-Ultra"
+              cd ./KernelSU
+              ;;
+            MKSU | "JingMatrix KernelSU" | FinaSU)
+              echo "Applying KernelSU side SUSFS patch for $KSU_VARIANT"
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official.patch")
+              ;;
+            MamboSU)
+              echo "Applying KernelSU side SUSFS patch for MamboSU"
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow.patch")
+              ;;
             *)
               echo "Unsupported KernelSU variant: $KSU_VARIANT" >&2
               exit 1
@@ -263,7 +309,7 @@ jobs:
           cd common
 
           case "$KSU_VARIANT" in
-            Official | KowSU | xxKSU)
+            Official | KowSU | xxKSU | MKSU | "JingMatrix KernelSU" | FinaSU | MamboSU)
               echo "This KSU variant requires de-inlined patch."
               echo "Generating de-inlined patch..."
               cd ../..
@@ -309,6 +355,10 @@ jobs:
             kconfig \
               -d KSU_KPROBES_HOOK \
               -d KSU_SUSFS_SUS_SU
+          fi
+
+          if [ "$KSU_VARIANT" = "SukiSU-Ultra" ] || [ "$KSU_VARIANT" = "MKSU" ]; then
+            kconfig -d KSU_SUSFS_SUS_SU
           fi
 
           # ============================================================
