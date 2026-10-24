@@ -14,6 +14,12 @@ with `patch -p1`, hand merge the failing hunks (with the fork tree),
 then `git diff` against the pristine fork. Verified with `patch -p1
 --dry-run` against a fresh clone of the same ref.
 
+mksu and mambosu deliberately drop the pkg_observer.c hunk that calls
+susfs_parse_priority_app_strings(): both forks refactored throne
+tracking and no longer have ksu_defer_track_throne, and nothing
+upstream (SukiSU-Ultra or current midori01) calls it either, since ksud
+drives the priority uid filter through its own susfs command.
+
 FinaSU (LyraVoid/FinaSU @ master) already embeds KSU side susfs with
 its own extension/susfs.c, so it needs no patch. Official, KowSU, xxKSU
 and the SukiSU family carry their own integration upstream.
