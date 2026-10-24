@@ -219,6 +219,10 @@ jobs:
             SukiSU-Ultra)
               curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s "$KSU_REF"
               ;;
+            xxKSU)
+              curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s "$KSU_REF"
+              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx~1.patch")
+              ;;
             *)
               # Forks whose setup.sh clones upstream: clone the fork first so
               # the script reuses that checkout instead of pulling the wrong repo.
@@ -229,10 +233,6 @@ jobs:
               echo "Cloning $KSU_REPO for $KSU_VARIANT..."
               git clone "https://github.com/$KSU_REPO.git" KernelSU
               curl -LSs "https://raw.githubusercontent.com/$KSU_REPO/$KSU_REF/kernel/setup.sh" | bash -s "$KSU_REF"
-              ;;
-            xxKSU)
-              curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s "$KSU_REF"
-              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx~1.patch")
               ;;
             *)
               echo "Unsupported KernelSU variant: $KSU_VARIANT" >&2
@@ -285,13 +285,21 @@ jobs:
               echo "KernelSU side SUSFS is already present in SukiSU-Ultra"
               cd ./KernelSU
               ;;
-            MKSU | "JingMatrix KernelSU" | FinaSU)
-              echo "Applying KernelSU side SUSFS patch for $KSU_VARIANT"
-              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official.patch")
+            MKSU)
+              echo "Applying the checked-in KSU side susfs patch for MKSU"
+              patch -p1 -d KernelSU < "$GITHUB_WORKSPACE/.github/patches/ksu/mksu.patch"
+              ;;
+            "JingMatrix KernelSU")
+              echo "Applying the checked-in KSU side susfs patch for JingMatrix KernelSU"
+              patch -p1 -d KernelSU < "$GITHUB_WORKSPACE/.github/patches/ksu/jingmatrix.patch"
               ;;
             MamboSU)
-              echo "Applying KernelSU side SUSFS patch for MamboSU"
-              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow.patch")
+              echo "Applying the checked-in KSU side susfs patch for MamboSU"
+              patch -p1 -d KernelSU < "$GITHUB_WORKSPACE/.github/patches/ksu/mambosu.patch"
+              ;;
+            FinaSU)
+              echo "No need to enable SusFS for FinaSU (FinaSU already embeds KSU side susfs)"
+              cd ./KernelSU
               ;;
             *)
               echo "Unsupported KernelSU variant: $KSU_VARIANT" >&2

@@ -539,13 +539,21 @@ jobs:
               echo "Adding susfs4ksu support for xxKSU"
               patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/xx.patch")
               ;;
-            "MKSU" | "JingMatrix KernelSU" | "FinaSU")
-              echo "Adding susfs4ksu support for ${{ inputs.kernelsu_variant }}"
-              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/official.patch")
+            "MKSU")
+              echo "Applying the checked-in KSU side susfs patch for MKSU"
+              patch -p1 -d KernelSU < "$GITHUB_WORKSPACE/.github/patches/ksu/mksu.patch"
+              ;;
+            "JingMatrix KernelSU")
+              echo "Applying the checked-in KSU side susfs patch for JingMatrix KernelSU"
+              patch -p1 -d KernelSU < "$GITHUB_WORKSPACE/.github/patches/ksu/jingmatrix.patch"
               ;;
             "MamboSU")
-              echo "Adding susfs4ksu support for MamboSU"
-              patch -p1 -d KernelSU < <(curl -sSfL "https://github.com/midori01/KernelSU/commit/kow.patch")
+              echo "Applying the checked-in KSU side susfs patch for MamboSU"
+              patch -p1 -d KernelSU < "$GITHUB_WORKSPACE/.github/patches/ksu/mambosu.patch"
+              ;;
+            "FinaSU")
+              echo "No need to enable SusFS for FinaSU (FinaSU already embeds KSU side susfs)"
+              cd ./KernelSU
               ;;
             *)
               echo "Invalid KernelSU variant selected!" >&2

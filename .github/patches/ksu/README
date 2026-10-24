@@ -1,0 +1,19 @@
+KSU side susfs patches
+======================
+
+KSU side susfs integration for forks whose sources do not ship one.
+Generated against exact refs of the forks, so regenerate the patch if
+their ref moves:
+
+  mksu.patch        5ec1cff/KernelSU    @ main     (from midori official.patch)
+  jingmatrix.patch  JingMatrix/KernelSU @ dev      (from midori official.patch)
+  mambosu.patch     RapliVx/KernelSU    @ master   (from midori kow.patch)
+
+How they were generated: clone the fork ref, apply the upstream patch
+with `patch -p1`, hand merge the failing hunks (with the fork tree),
+then `git diff` against the pristine fork. Verified with `patch -p1
+--dry-run` against a fresh clone of the same ref.
+
+FinaSU (LyraVoid/FinaSU @ master) already embeds KSU side susfs with
+its own extension/susfs.c, so it needs no patch. Official, KowSU, xxKSU
+and the SukiSU family carry their own integration upstream.
