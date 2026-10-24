@@ -64,6 +64,7 @@ jobs:
       KSU_REF: ${{ matrix.ksu_ref }}
       KSU_REPO: ${{ matrix.ksu_repo }}
       USE_SUSFS: ${{ matrix.use_susfs }}
+      ZWC_PATCH: "false"
       ARTIFACT_DIR: ${{ github.workspace }}/artifacts
       ANYKERNEL3: ${{ github.workspace }}/AnyKernel3
       KERNEL_PATCHES: ${{ github.workspace }}/kernel_patches
@@ -325,6 +326,7 @@ jobs:
           esac
 
       - name: Zero-width character fix
+        if: ${{ env.ZWC_PATCH == 'true' }}
         run: |
           cp ./kernel_patches/common/unicode_bypass_fix_6.1+.patch "./$CONFIG/common/"
           cd "$CONFIG/common"

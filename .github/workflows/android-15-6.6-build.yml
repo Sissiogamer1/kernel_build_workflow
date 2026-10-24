@@ -79,7 +79,7 @@ on:
         description: "Apply fix ZWC patch to avoid path leaking. If the kernel source already fixed the issue, you don't need it"
         required: false
         type: boolean
-        default: true
+        default: false
       use_zram:
         description: 'Add ZRAM'
         required: true
