@@ -1,6 +1,25 @@
 #!/bin/bash
 set -euo pipefail
 
+# Kernel banner identity: fixed author, host taken from the build distro
+# (e.g. Sissiogamer1@ubuntu-26.04, auto-updating with the runner image).
+export KBUILD_BUILD_USER="Sissiogamer1"
+
+ID="" VERSION_ID=""
+if [ -r /etc/os-release ]; then
+    . /etc/os-release
+fi
+if [ -n "$ID" ]; then
+    if [ -n "$VERSION_ID" ]; then
+        export KBUILD_BUILD_HOST="${ID}-${VERSION_ID}"
+    else
+        export KBUILD_BUILD_HOST="${ID}"
+    fi
+else
+    export KBUILD_BUILD_HOST="ubuntu"
+fi
+unset ID VERSION_ID
+
 # Positional arguments kept compatible with the old workflow:
 #   $1 = defconfig
 #   $2 = build label (e.g. Next-susfs-nomount)
