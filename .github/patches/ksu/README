@@ -6,13 +6,17 @@ Generated against exact refs of the forks, so regenerate the patch if
 their ref moves:
 
   mksu.patch        5ec1cff/KernelSU    @ main     (from midori official.patch)
-  jingmatrix.patch  JingMatrix/KernelSU @ dev      (from midori official.patch)
+  jingmatrix.patch  JingMatrix/KernelSU @ dev      (from midori official.patch, base 74df84d)
   mambosu.patch     RapliVx/KernelSU    @ master   (from midori kow.patch)
 
 How they were generated: clone the fork ref, apply the upstream patch
 with `patch -p1`, hand merge the failing hunks (with the fork tree),
 then `git diff` against the pristine fork. Verified with `patch -p1
 --dry-run` against a fresh clone of the same ref.
+
+jingmatrix.patch was regenerated after the fork added its Samsung
+RKP/KDP/DEFEX framework (74df84d), which added two includes before the
+spot where the susfs include block goes in supercall/dispatch.c.
 
 mksu and mambosu deliberately drop the pkg_observer.c hunk that calls
 susfs_parse_priority_app_strings(): both forks refactored throne

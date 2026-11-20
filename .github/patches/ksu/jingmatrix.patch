@@ -103,7 +103,7 @@ index 88e22811..3aa31ea7 100644
 +
  endmenu
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index b166ab00..9476320c 100644
+index feb0da78..d1302ca6 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
 @@ -7,6 +7,10 @@
@@ -117,7 +117,7 @@ index b166ab00..9476320c 100644
  #include "policy/allowlist.h"
  #include "policy/app_profile.h"
  #include "policy/feature.h"
-@@ -171,6 +175,10 @@ int __init kernelsu_init(void)
+@@ -172,6 +176,10 @@ int __init kernelsu_init(void)
      ksu_ptctl_init();
      ksu_uhook_init();
  
@@ -345,20 +345,20 @@ index 33050812..a68eedf9 100644
 +#endif // #ifdef CONFIG_KSU_SUSFS
  #endif
 diff --git a/kernel/supercall/dispatch.c b/kernel/supercall/dispatch.c
-index 1921b547..9c70199d 100644
+index d7f03aa9..75da6be6 100644
 --- a/kernel/supercall/dispatch.c
 +++ b/kernel/supercall/dispatch.c
-@@ -28,6 +28,9 @@
- #include "sulog/event.h"
- #include "sulog/fd.h"
+@@ -33,6 +33,9 @@
  #include "supercall/supercall.h"
+ #include "infra/symbol_resolver.h"
+ #include "preinit/preinit.h"
 +#ifdef CONFIG_KSU_SUSFS
 +#include <linux/susfs.h>
 +#endif // #ifdef CONFIG_KSU_SUSFS
  
  static int do_grant_root(void __user *arg)
  {
-@@ -140,6 +143,9 @@ static int do_report_event(void __user *arg)
+@@ -149,6 +152,9 @@ static int do_report_event(void __user *arg)
              } else {
                  pr_info("boot_complete triggered\n");
                  on_boot_completed();

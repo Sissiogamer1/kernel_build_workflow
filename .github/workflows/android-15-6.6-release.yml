@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build-kernel:
     name: Build ${{ matrix.variant }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -482,7 +482,7 @@ jobs:
   collect-artifacts:
     name: Collect kernel zips
     needs: build-kernel
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Download all variant artifacts
         uses: actions/download-artifact@v4

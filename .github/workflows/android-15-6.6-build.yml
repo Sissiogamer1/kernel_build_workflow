@@ -127,7 +127,7 @@ on:
         default: ""
 jobs:
   build-kernel-kernelsu-susfs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Maximize Build Space
