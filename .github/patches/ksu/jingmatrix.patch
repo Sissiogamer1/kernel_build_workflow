@@ -1,8 +1,8 @@
 diff --git a/kernel/Kconfig b/kernel/Kconfig
-index 88e22811..3aa31ea7 100644
+index 88e22811..c31fe318 100644
 --- a/kernel/Kconfig
 +++ b/kernel/Kconfig
-@@ -43,4 +43,99 @@ config KSU_X86_PATCH_SYSCALL_DISPATCHER
+@@ -43,4 +43,107 @@ config KSU_X86_PATCH_SYSCALL_DISPATCHER
  	  Dynamically patch x64's hardened syscall dispatcher to support syscall hooks. This is a
  	  replacement for a kernel source code patch, and is useful for x86_64 LKM mode.
  
@@ -99,6 +99,14 @@ index 88e22811..3aa31ea7 100644
 +	  - Effective only on zygote/zygote_next spawned user app process that is marked with TIF_PROC_UMOUNTED
 +	    and with (uid % 100000) >= 10000.
 +
++config KSU_SUSFS_PRIORITY_UID_FILTER
++	bool "Enable to allow adding user-defined uids that will be hidden from getpriority/setpriority/ioprio_get/ioprio_set syscall"
++	depends on KSU_SUSFS
++	default y
++	help
++	  - Allow hiding user-defined uids from syscalls like getpriority/setpriority/ioprio_get/ioprio_set.
++	  - Effective on all processes with uid >= 10000.
++
 +endmenu
 +
  endmenu
@@ -185,7 +193,7 @@ index 2c6da789..9d4dba07 100644
      return 0;
  }
 diff --git a/kernel/manager/pkg_observer.c b/kernel/manager/pkg_observer.c
-index e183bf50..05a0f87a 100644
+index e183bf50..2191a6de 100644
 --- a/kernel/manager/pkg_observer.c
 +++ b/kernel/manager/pkg_observer.c
 @@ -8,6 +8,9 @@
@@ -202,9 +210,9 @@ index e183bf50..05a0f87a 100644
  {
      struct callback_head *cb;
  
-+#ifdef CONFIG_KSU_SUSFS
++#ifdef CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER
 +    susfs_parse_priority_app_strings();
-+#endif // #ifdef CONFIG_KSU_SUSFS
++#endif // #ifdef CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER
 +
      if (!(current->flags & PF_KTHREAD)) {
          cb = kzalloc(sizeof(*cb), GFP_KERNEL);
@@ -369,7 +377,7 @@ index d7f03aa9..75da6be6 100644
          }
          break;
 diff --git a/kernel/supercall/supercall.c b/kernel/supercall/supercall.c
-index 24e54fea..a25a1916 100644
+index 24e54fea..8f782f7e 100644
 --- a/kernel/supercall/supercall.c
 +++ b/kernel/supercall/supercall.c
 @@ -16,6 +16,10 @@
@@ -383,7 +391,7 @@ index 24e54fea..a25a1916 100644
  #include "hook/syscall_hook.h"
  #include "hook/kprobe_patch_compat.h"
  
-@@ -120,6 +124,104 @@ static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
+@@ -120,6 +124,106 @@ static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
      struct pt_regs *real_regs = PT_REAL_REGS(regs);
      int magic1 = (int)PT_REGS_SYSCALL_PARM1(real_regs);
      int magic2 = (int)PT_REGS_PARM2(real_regs);
@@ -458,10 +466,12 @@ index 24e54fea..a25a1916 100644
 +			goto out_susfs;
 +		}
 +#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#ifdef CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER
 +		if (cmd == CMD_SUSFS_SET_PRIORITY_UID_FILTER) {
 +			susfs_set_priority_uid_filter(arg);
 +			goto out_susfs;
 +		}
++#endif // #ifdef CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER
 +		if (cmd == CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING) {
 +			susfs_set_avc_log_spoofing(arg);
 +			goto out_susfs;

@@ -18,6 +18,11 @@ jingmatrix.patch was regenerated after the fork added its Samsung
 RKP/KDP/DEFEX framework (74df84d), which added two includes before the
 spot where the susfs include block goes in supercall/dispatch.c.
 
+susfs4ksu 2.4.0 gates the priority uid filter behind
+CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER, so all three patches define that
+Kconfig entry (default y) and guard their priority filter calls with
+it, matching the updated upstream patches.
+
 mksu and mambosu deliberately drop the pkg_observer.c hunk that calls
 susfs_parse_priority_app_strings(): both forks refactored throne
 tracking and no longer have ksu_defer_track_throne, and nothing
